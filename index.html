@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อิสระ (Issara) AI - ผู้ช่วยการเรียนรู้เพื่อความเท่าเทียม</title>
+
+    <!-- Tailwind & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Prompt', 'sans-serif'] },
+                    colors: { ais: { green: '#82C341', dark: '#002C1F' } }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { scrollbar-width: none; -ms-overflow-style: none; }
+        body::-webkit-scrollbar { display: none; }
+
+        .option-btn { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s; }
+        .option-btn:active { transform: scale(0.95); }
+
+        /* Animations */
+        .bounce-slow { animation: bounce 3s infinite; }
+        @keyframes water-drop {
+            0% { transform: translateY(-20px) scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(20px) scale(1.2); opacity: 0; }
+        }
+        .animate-water { animation: water-drop 1s ease-in-out; }
+
+        .tree-grow { animation: grow 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes grow {
+            0% { transform: scale(0.8); filter: brightness(1.5); }
+            50% { transform: scale(1.1); filter: brightness(1.2); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col select-none overflow-x-hidden bg-grid">
+
+    <!-- Start Screen (To unlock Audio Context & Mic safely) -->
+    <div id="start-overlay" class="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+        <div class="w-32 h-32 bg-gradient-to-br from-ais-green to-emerald-500 rounded-3xl flex items-center justify-center text-slate-900 text-7xl mb-8 shadow-[0_0_60px_rgba(130,195,65,0.4)] bounce-slow">
+            <i class="fa-solid fa-hands-holding-child"></i>
+        </div>
+        <h1 class="text-5xl md:text-7xl font-black text-white mb-4 tracking-tight">อิสระ <span class="text-ais-green">AI</span></h1>
+        <p class="text-slate-400 text-lg md:text-xl mb-2 max-w-lg">รดน้ำต้นไม้แห่งการเรียนรู้ ด้วยเสียงของคุณ</p>
+
+        <button onclick="startApp()" class="group relative px-10 py-5 bg-ais-green hover:bg-emerald-400 text-slate-900 rounded-full font-bold text-2xl shadow-[0_0_30px_rgba(130,195,65,0.3)] transition-all hover:scale-105 flex items-center gap-3">
+            <i class="fa-solid fa-power-off"></i> แตะเพื่อเริ่มต้นระบบ
+            <div class="absolute inset-0 rounded-full bg-ais-green opacity-20 group-hover:animate-ping"></div>
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 px-4 py-3 sticky top-0 z-50 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-ais-green text-slate-900 p-2 rounded-xl text-lg flex items-center justify-center w-10 h-10 shadow-lg">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white hidden sm:block">อิสระ AI</h1>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="switchTab('demo')" id="tab-btn-demo" class="px-4 py-2 text-sm font-bold rounded-lg bg-ais-green text-slate-900 transition-colors">
+                    <i class="fa-solid fa-gamepad"></i> หน้าจอทำข้อสอบ
+                </button>
+                <button onclick="switchTab('arch')" id="tab-btn-arch" class="px-4 py-2 text-sm font-bold rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors">
+                    <i class="fa-solid fa-network-wired"></i> AIS Tech Stack (จำลอง)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col p-3 sm:p-5 max-w-6xl mx-auto w-full h-full relative">
+
+        <!-- QUIZ TAB -->
+        <div id="tab-demo" class="flex flex-col flex-grow gap-4 h-full">
+
+            <div id="quiz-container" class="flex flex-col flex-grow gap-4 h-full">
+                <!-- Header: Tree Progress Indicator -->
+                <div class="bg-slate-800 border-2 border-slate-700 rounded-3xl p-5 shadow-xl relative flex flex-col shrink-0">
+
+                    <div class="flex justify-between items-center mb-4">
+                        <!-- Custom SVG Filling Tree Indicator -->
+                        <div class="flex items-center gap-3 bg-slate-900 border border-slate-600 px-4 py-2 rounded-full shadow-inner">
+                            <span class="text-sm font-bold text-slate-400">ต้นไม้ของหนู:</span>
+                            <div class="relative w-8 h-8">
+                                <!-- Base Silhouette (Dark Grey) -->
+                                <svg viewBox="0 0 24 24" class="absolute inset-0 w-full h-full">
+                                    <path fill="#334155" d="M10 22V14H14V22Z"/> <!-- Trunk -->
+                                    <path fill="#475569" d="M17 10C17 7.2 14.8 5 12 5C9.2 5 7 7.2 7 10C4.8 10.5 3.5 12.5 4 14.8C4.4 16.5 6 18 8 18H16C18.2 18 20 16.2 20 14C20 12 18.5 10.4 17 10Z"/> <!-- Canopy -->
+                                </svg>
+                                <!-- Colored Fill (Clipped from bottom to top via CSS) -->
+                                <svg id="tree-fill-header" viewBox="0 0 24 24" class="absolute inset-0 w-full h-full drop-shadow-[0_0_8px_rgba(34,197,94,0.6)] transition-all duration-1000 ease-out" style="clip-path: inset(100% 0 0 0);">
+                                    <path fill="#8B4513" d="M10 22V14H14V22Z"/> <!-- Brown Trunk (สีน้ำตาลลำต้น) -->
+                                    <path fill="#22c55e" d="M17 10C17 7.2 14.8 5 12 5C9.2 5 7 7.2 7 10C4.8 10.5 3.5 12.5 4 14.8C4.4 16.5 6 18 8 18H16C18.2 18 20 16.2 20 14C20 12 18.5 10.4 17 10Z"/> <!-- Green Canopy (สีเขียวพุ่มใบ) -->
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <span class="text-[10px] sm:text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/50 px-2 sm:px-3 py-1 rounded-full flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                <i class="fa-solid fa-bolt text-yellow-400"></i> AIS 5G MEC (จำลอง)
+                            </span>
+                            <span class="text-[10px] sm:text-xs font-bold bg-sky-950 text-sky-400 border border-sky-500/50 px-2 sm:px-3 py-1 rounded-full items-center gap-1 hidden sm:flex shadow-[0_0_10px_rgba(56,189,248,0.2)]">
+                                <i class="fa-solid fa-cloud"></i> AIS Cloud X (จำลอง)
+                            </span>
+                        </div>
+                    </div>
+
+                    <h2 id="ui-q-text" class="text-2xl sm:text-3xl font-black text-white leading-snug mb-2">กำลังเตรียมคำถาม...</h2>
+                </div>
+
+                <!-- 2x2 Grid Options -->
+                <div class="grid grid-cols-2 gap-3 sm:gap-5 flex-grow min-h-[350px]">
+                    <button onclick="handleManualClick(0)" class="option-btn group bg-emerald-600 hover:bg-emerald-500 text-white rounded-[2rem] p-4 flex flex-col justify-between border-[6px] border-emerald-700 shadow-xl relative overflow-hidden">
+                        <div class="flex justify-between w-full items-center z-10">
+                            <span class="bg-emerald-900/60 text-xl font-black px-4 py-1 rounded-xl">ก.</span>
+                            <span class="text-sm bg-emerald-900/60 px-3 py-1 rounded-lg font-bold">สีเขียว</span>
+                        </div>
+                        <div class="w-full text-center py-2 z-10">
+                            <i id="opt-0-icon" class="fa-solid fa-spinner fa-spin text-5xl sm:text-7xl mb-3 drop-shadow-md transition-transform group-hover:scale-110"></i>
+                            <div id="opt-0-text" class="text-2xl sm:text-4xl font-black tracking-tight drop-shadow-md">...</div>
+                        </div>
+                    </button>
+
+                    <button onclick="handleManualClick(1)" class="option-btn group bg-rose-600 hover:bg-rose-500 text-white rounded-[2rem] p-4 flex flex-col justify-between border-[6px] border-rose-700 shadow-xl relative overflow-hidden">
+                        <div class="flex justify-between w-full items-center z-10">
+                            <span class="bg-rose-900/60 text-xl font-black px-4 py-1 rounded-xl">ข.</span>
+                            <span class="text-sm bg-rose-900/60 px-3 py-1 rounded-lg font-bold">สีแดง</span>
+                        </div>
+                        <div class="w-full text-center py-2 z-10">
+                            <i id="opt-1-icon" class="fa-solid fa-spinner fa-spin text-5xl sm:text-7xl mb-3 drop-shadow-md transition-transform group-hover:scale-110"></i>
+                            <div id="opt-1-text" class="text-2xl sm:text-4xl font-black tracking-tight drop-shadow-md">...</div>
+                        </div>
+                    </button>
+
+                    <button onclick="handleManualClick(2)" class="option-btn group bg-amber-500 hover:bg-amber-400 text-amber-950 rounded-[2rem] p-4 flex flex-col justify-between border-[6px] border-amber-600 shadow-xl relative overflow-hidden">
+                        <div class="flex justify-between w-full items-center z-10">
+                            <span class="bg-amber-800/20 text-xl font-black px-4 py-1 rounded-xl">ค.</span>
+                            <span class="text-sm bg-amber-800/20 px-3 py-1 rounded-lg font-bold">สีเหลือง</span>
+                        </div>
+                        <div class="w-full text-center py-2 z-10">
+                            <i id="opt-2-icon" class="fa-solid fa-spinner fa-spin text-5xl sm:text-7xl mb-3 drop-shadow-md transition-transform group-hover:scale-110"></i>
+                            <div id="opt-2-text" class="text-2xl sm:text-4xl font-black tracking-tight drop-shadow-md">...</div>
+                        </div>
+                    </button>
+
+                    <button onclick="handleManualClick(3)" class="option-btn group bg-sky-600 hover:bg-sky-500 text-white rounded-[2rem] p-4 flex flex-col justify-between border-[6px] border-sky-700 shadow-xl relative overflow-hidden">
+                        <div class="flex justify-between w-full items-center z-10">
+                            <span class="bg-sky-900/60 text-xl font-black px-4 py-1 rounded-xl">ง.</span>
+                            <span class="text-sm bg-sky-900/60 px-3 py-1 rounded-lg font-bold">สีฟ้า</span>
+                        </div>
+                        <div class="w-full text-center py-2 z-10">
+                            <i id="opt-3-icon" class="fa-solid fa-spinner fa-spin text-5xl sm:text-7xl mb-3 drop-shadow-md transition-transform group-hover:scale-110"></i>
+                            <div id="opt-3-text" class="text-2xl sm:text-4xl font-black tracking-tight drop-shadow-md">...</div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- AI Status Bar -->
+                <div class="mt-1 flex flex-wrap items-center justify-between gap-3">
+                    <div id="ai-status-container" class="flex items-center gap-3 bg-slate-900 px-5 py-3 rounded-2xl border border-slate-700 w-full transition-all duration-300">
+                        <i id="ai-icon" class="fa-solid fa-robot text-slate-400 text-2xl"></i>
+                        <div class="flex flex-col flex-grow">
+                            <span id="ai-status-text" class="text-sm md:text-base font-bold text-slate-300">ระบบ AI สแตนด์บาย...</span>
+                            <div class="flex justify-between w-full">
+                                <span id="ai-sub-status" class="text-xs text-slate-500">รอเปิดระบบ</span>
+                                <span class="text-xs text-ais-green font-mono font-bold" id="stt-transcript">ระบบวิเคราะห์คำพูด: -</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- END SCREEN: Final Tree Visualization -->
+            <div id="end-container" class="hidden flex-col items-center justify-center flex-grow bg-slate-800 border-2 border-slate-700 rounded-3xl p-8 text-center shadow-2xl relative">
+
+                <h2 class="text-4xl md:text-5xl font-black text-white mb-8">ผลการรดน้ำต้นไม้ของหนู!</h2>
+
+                <div class="relative w-56 h-56 mb-8 mx-auto">
+                    <!-- Base Silhouette -->
+                    <svg viewBox="0 0 24 24" class="absolute inset-0 w-full h-full">
+                        <path fill="#334155" d="M10 22V14H14V22Z"/>
+                        <path fill="#475569" d="M17 10C17 7.2 14.8 5 12 5C9.2 5 7 7.2 7 10C4.8 10.5 3.5 12.5 4 14.8C4.4 16.5 6 18 8 18H16C18.2 18 20 16.2 20 14C20 12 18.5 10.4 17 10Z"/>
+                    </svg>
+                    <!-- Colored Final Result (Clipped) -->
+                    <svg id="tree-fill-end" viewBox="0 0 24 24" class="absolute inset-0 w-full h-full drop-shadow-[0_0_40px_rgba(34,197,94,0.6)] transition-all duration-[2000ms] ease-out" style="clip-path: inset(100% 0 0 0);">
+                        <path fill="#8B4513" d="M10 22V14H14V22Z"/> <!-- Brown Trunk -->
+                        <path fill="#22c55e" d="M17 10C17 7.2 14.8 5 12 5C9.2 5 7 7.2 7 10C4.8 10.5 3.5 12.5 4 14.8C4.4 16.5 6 18 8 18H16C18.2 18 20 16.2 20 14C20 12 18.5 10.4 17 10Z"/> <!-- Green Canopy -->
+                    </svg>
+                    <!-- Sparkles -->
+                    <div class="absolute top-0 right-0 text-4xl animate-ping text-yellow-400 z-0 delay-75">✨</div>
+                    <div class="absolute bottom-10 left-0 text-3xl animate-pulse text-amber-300 z-0">✨</div>
+                </div>
+
+                <p id="score-feedback" class="text-xl text-emerald-400 font-bold mb-8">เก่งมากเลยค่ะ ต้นไม้ของหนูเติบโตขึ้นเยอะเลย!</p>
+
+                <button onclick="resetQuiz()" class="px-8 py-4 bg-ais-green text-slate-900 rounded-2xl font-bold text-xl shadow-[0_0_20px_rgba(130,195,65,0.4)] transition-transform hover:scale-105 flex items-center gap-3">
+                    <i class="fa-solid fa-rotate-right"></i> เริ่มปลูกต้นไม้ใหม่
+                </button>
+            </div>
+        </div>
+
+        <!-- ARCHITECTURE TAB -->
+        <div id="tab-arch" class="hidden flex-col h-full bg-slate-800 border-2 border-slate-700 rounded-3xl p-6 shadow-xl overflow-y-auto">
+            <h2 class="text-3xl font-black text-ais-green mb-2">ตัวอย่างเทคโนโลยี AIS (จำลอง)</h2>
+            <p class="text-slate-300 mb-4">หน้านี้เป็นต้นแบบสาธิตแนวคิดเท่านั้น ยังไม่ได้เชื่อมต่อบริการหรือเครือข่าย AIS จริง</p>
+
+            <div class="mb-6 rounded-2xl border border-amber-500/50 bg-amber-950/40 p-4 text-sm text-amber-200">
+                <i class="fa-solid fa-circle-info mr-2"></i>AIS 5G MEC, AIS Cloud X และ Paragon Platform ที่แสดงด้านล่างเป็นภาพจำลอง ไม่มีการเรียกใช้ระบบ AIS จริง ส่วนเสียงพูดและการรู้จำเสียงใช้ความสามารถของเบราว์เซอร์
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-slate-900 p-5 rounded-2xl border border-emerald-500/30 text-center shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                    <i class="fa-solid fa-tower-broadcast text-4xl text-ais-green mb-3"></i>
+                    <h3 class="font-bold text-white text-lg mb-2">1. AIS 5G MEC — จำลอง</h3>
+                    <p class="text-sm text-slate-400">จำลองแนวคิดการประมวลผล Edge และ Low Latency เท่านั้น เว็บไซต์นี้ไม่ได้เชื่อมต่อ AIS 5G MEC หรือเครือข่ายจริง</p>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-2xl border border-sky-500/30 text-center shadow-[0_0_15px_rgba(56,189,248,0.1)]">
+                    <i class="fa-solid fa-cloud text-4xl text-sky-400 mb-3"></i>
+                    <h3 class="font-bold text-white text-lg mb-2">2. AIS Cloud X — จำลอง</h3>
+                    <p class="text-sm text-slate-400">จำลองแนวคิดคลาวด์และ NLP เท่านั้น การอ่านออกเสียงใช้ Speech Synthesis ในเบราว์เซอร์ ไม่มีการเรียก AIS Cloud X</p>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-2xl border border-purple-500/30 text-center shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+                    <i class="fa-solid fa-network-wired text-4xl text-purple-400 mb-3"></i>
+                    <h3 class="font-bold text-white text-lg mb-2">3. Paragon Platform — จำลอง</h3>
+                    <p class="text-sm text-slate-400">ภาพประกอบแนวคิดแพลตฟอร์มบริหารจัดการเท่านั้น ยังไม่มีการเชื่อมต่อ Paragon Platform หรือระบบจริง</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FEEDBACK MODAL (Watering the plant) -->
+    <div id="modal-feedback" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div id="modal-box" class="bg-slate-800 border-4 rounded-3xl p-8 max-w-sm w-[90%] text-center transform scale-90 transition-all duration-300">
+            <div id="modal-icon-container" class="w-24 h-24 mx-auto rounded-full flex items-center justify-center text-5xl mb-4 border-4 relative">
+                <i id="modal-icon" class="fa-solid fa-droplet"></i>
+                <div id="water-splash" class="absolute inset-0 text-sky-400 text-4xl hidden"><i class="fa-solid fa-droplet animate-water"></i></div>
+            </div>
+            <h2 id="modal-title" class="text-3xl font-black text-white mb-2">...</h2>
+        </div>
+    </div>
+
+    <script>
+        /*
+        เคล็ดลับเสียง AI ให้เหมือนคน:
+        ใช้ เครื่องหมาย (,) และ (.) เพื่อบังคับจังหวะหยุดหายใจ
+        พิมพ์คำอ่านเพื่อป้องกัน AI อ่านผิด
+        */
+        const quizData = [
+            {
+                uiText: "ข้อที่ 1 : สัตว์ในข้อใด อาศัยอยู่ในน้ำ?",
+                ttsSpeakText: "ข้อที่ 1, สัตว์ในข้อใด, อาศัยอยู่ในน้ำคะ? . ตัวเลือกคือ, ข้อ กอไก่. สีเขียว. สุนัข. . ข้อ ขอไข่. สีแดง. ปลา. . ข้อ คอควาย. สีเหลือง. นก. . ข้อ งองู. สีฟ้า. แมว.",
+                correctIndex: 1, // ข. ปลา
+                options: [
+                    { key: "ก", colorText: "สีเขียว", text: "สุนัข", icon: "fa-dog" },
+                    { key: "ข", colorText: "สีแดง", text: "ปลา", icon: "fa-fish" },
+                    { key: "ค", colorText: "สีเหลือง", text: "นก", icon: "fa-crow" },
+                    { key: "ง", colorText: "สีฟ้า", text: "แมว", icon: "fa-cat" }
+                ]
+            },
+            {
+                uiText: "ข้อที่ 2 : สิ่งใดต่อไปนี้ คือผลไม้?",
+                ttsSpeakText: "ข้อที่ 2, สิ่งใดต่อไปนี้, คือผลไม้คะ? . ตัวเลือกคือ, ข้อ กอไก่. สีเขียว. แอปเปิล. . ข้อ ขอไข่. สีแดง. เก้าอี้. . ข้อ คอควาย. สีเหลือง. รถยนต์. . ข้อ งองู. สีฟ้า. หนังสือ.",
+                correctIndex: 0, // ก. แอปเปิล
+                options: [
+                    { key: "ก", colorText: "สีเขียว", text: "แอปเปิล", icon: "fa-apple-whole" },
+                    { key: "ข", colorText: "สีแดง", text: "เก้าอี้", icon: "fa-chair" },
+                    { key: "ค", colorText: "สีเหลือง", text: "รถยนต์", icon: "fa-car" },
+                    { key: "ง", colorText: "สีฟ้า", text: "หนังสือ", icon: "fa-book" }
+                ]
+            },
+            {
+                uiText: "ข้อที่ 3 : สัญญาณไฟจราจร สีแดง หมายถึงอะไร?",
+                ttsSpeakText: "ข้อที่ 3, สัญญาณไฟจราจร สีแดง, หมายถึงอะไรคะ? . ตัวเลือกคือ, ข้อ กอไก่. สีเขียว. ขับไปได้. . ข้อ ขอไข่. สีแดง. ให้หยุดรถ. . ข้อ คอควาย. สีเหลือง. เลี้ยวซ้าย. . ข้อ งองู. สีฟ้า. จอดพัก.",
+                correctIndex: 1, // ข. ให้หยุดรถ
+                options: [
+                    { key: "ก", colorText: "สีเขียว", text: "ขับไปได้", icon: "fa-circle-play" },
+                    { key: "ข", colorText: "สีแดง", text: "ให้หยุดรถ", icon: "fa-hand" },
+                    { key: "ค", colorText: "สีเหลือง", text: "เลี้ยวซ้าย", icon: "fa-arrow-turn-down fa-rotate-90" },
+                    { key: "ง", colorText: "สีฟ้า", text: "จอดพัก", icon: "fa-bed" }
+                ]
+            }
+        ];
+
+        let currentIndex = 0;
+        let treeGrowthLevel = 0; // แทนที่การนับคะแนน (โชว์การเติบโตแทน)
+        let synth = window.speechSynthesis;
+        let bestThaiFemaleVoice = null;
+        let recognition = null;
+        let recognitionSessionActive = false; // สั่งเปิดเซสชันรู้จำเสียงไว้ตลอดแบบทดสอบ
+        let recognitionRunning = false;
+        let recognitionStarting = false;
+        let recognitionRestartTimer = null;
+        let recognitionStartTimer = null;
+        let recognitionResultTimer = null;
+        let recognitionRetryCount = 0;
+        let recognitionPausedForSpeech = true;
+        let recognitionUnavailable = false;
+        let waitingForInitialRecognition = false;
+        let pendingAfterRecognitionStop = null;
+        let isListening = false; // เปิดรับคำตอบเฉพาะหลังอ่านโจทย์จบ
+        let isProcessing = false;
+        let autoRepeatTimer = null;
+        let answerDebounceTimer = null;
+        let pendingTranscript = '';
+        let latestInterimTranscript = '';
+        let appStarted = false;
+
+        function initVoices() {
+            const voices = synth.getVoices();
+            if (voices.length === 0) return;
+
+            // ค้นหาเสียงผู้หญิงภาษาไทยที่ดีที่สุด
+            // 1. ลองหา Google ไทย (ออนไลน์ เนียนที่สุด)
+            bestThaiFemaleVoice = voices.find(v => v.name === 'Google ไทย' || v.name === 'Google Thai' || (v.name.includes('Google') && v.lang.includes('th')));
+
+            // 2. ถ้าไม่มี หาเสียง Kanya หรือ Siri (Mac/iOS)
+            if (!bestThaiFemaleVoice) bestThaiFemaleVoice = voices.find(v => (v.name.includes('Kanya') || v.name.includes('Siri')) && v.lang.includes('th'));
+
+            // 3. ถ้าใช้ Windows ให้เจาะจงหาเสียงผู้หญิง "Premwadee" เท่านั้น
+            if (!bestThaiFemaleVoice) bestThaiFemaleVoice = voices.find(v => v.name.includes('Premwadee') && v.lang.includes('th'));
+
+            // 4. บังคับเด็ดขาด "ห้าม" เลือก Pattara (เสียงผู้ชายของ Windows)
+            if (!bestThaiFemaleVoice) bestThaiFemaleVoice = voices.find(v => v.lang.includes('th') && !v.name.includes('Pattara'));
+
+            // 5. ท้ายที่สุดถ้าหาไม่เจอจริงๆ ค่อยเอาเสียงอะไรก็ได้
+            if (!bestThaiFemaleVoice) bestThaiFemaleVoice = voices.find(v => v.lang.includes('th'));
+        }
+
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = initVoices;
+        }
+
+        function armNoTranscriptTimer() {
+            clearTimeout(recognitionResultTimer);
+            recognitionResultTimer = setTimeout(() => {
+                if (isListening && !isProcessing && !pendingTranscript && !latestInterimTranscript) {
+                    document.getElementById('stt-transcript').innerText = "ยังไม่มีข้อความถอดเสียงจากเบราว์เซอร์";
+                    updateStatus("เซสชันเริ่มแล้ว แต่ยังไม่มีผลถอดเสียง — ตรวจสัญญาณเสียง/ภาษา/อินเทอร์เน็ต", "listening");
+                }
+            }, 6000);
+        }
+
+        function runAfterRecognitionStops() {
+            if (recognitionRunning || recognitionStarting) return;
+            const next = pendingAfterRecognitionStop;
+            pendingAfterRecognitionStop = null;
+            if (typeof next === 'function') next();
+        }
+
+        // หยุดการจับเสียงจริงก่อน TTS; ไม่ใช่แค่ทิ้งข้อความถอดเสียง
+        function pauseRecognitionForSpeech(afterStop = null) {
+            recognitionPausedForSpeech = true;
+            isListening = false;
+            pendingTranscript = '';
+            latestInterimTranscript = '';
+            clearTimeout(answerDebounceTimer);
+            clearTimeout(recognitionResultTimer);
+            clearTimeout(recognitionRestartTimer);
+            if (afterStop) {
+                pendingAfterRecognitionStop = afterStop;
+                updateStatus("กำลังหยุดไมโครโฟนก่อนให้เสียงอ่าน", "speaking");
+                document.getElementById('stt-transcript').innerText = "หยุดรับเสียงก่อนอ่านหรือพูดตอบกลับ";
+            }
+
+            if (recognition && (recognitionRunning || recognitionStarting)) {
+                try {
+                    if (typeof recognition.abort === 'function') recognition.abort();
+                    else recognition.stop();
+                } catch (error) {
+                    if (!recognitionRunning && !recognitionStarting) runAfterRecognitionStops();
+                }
+            } else {
+                recognitionStarting = false;
+                runAfterRecognitionStops();
+            }
+        }
+
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return false;
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'th-TH';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                clearTimeout(recognitionStartTimer);
+                recognitionStarting = false;
+                recognitionRunning = true;
+                recognitionRetryCount = 0;
+                if (waitingForInitialRecognition) {
+                    waitingForInitialRecognition = false;
+                    pauseRecognitionForSpeech(() => speakText(quizData[currentIndex].ttsSpeakText, true));
+                    return;
+                }
+                if (!recognitionSessionActive || recognitionPausedForSpeech) {
+                    try {
+                        if (typeof recognition.abort === 'function') recognition.abort();
+                        else recognition.stop();
+                    } catch (error) {}
+                    return;
+                }
+                if (isListening && !isProcessing) {
+                    updateStatus("ระบบฟังเริ่มแล้ว — พูดตอบได้", "listening");
+                    document.getElementById('stt-transcript').innerText = "รอเสียงพูดและผลถอดเสียง…";
+                    armNoTranscriptTimer();
+                }
+            };
+
+            recognition.onaudiostart = () => {
+                if (!isListening || isProcessing) return;
+                document.getElementById('stt-transcript').innerText = "เบราว์เซอร์เริ่มรับสัญญาณเสียงจากไมค์…";
+            };
+
+            recognition.onspeechstart = () => {
+                if (!isListening || isProcessing) return;
+                clearTimeout(recognitionResultTimer);
+                document.getElementById('stt-transcript').innerText = "ตรวจพบเสียงพูด — กำลังถอดเสียง…";
+                updateStatus("ตรวจพบเสียงพูด กำลังแปลงเป็นข้อความ", "listening");
+            };
+
+            recognition.onspeechend = () => {
+                if (!isListening || isProcessing) return;
+                document.getElementById('stt-transcript').innerText = "รับเสียงพูดแล้ว — รอผลถอดเสียง…";
+            };
+
+            recognition.onresult = (event) => {
+                // รับผลเฉพาะช่วงคำตอบเท่านั้น ไม่ตีความเสียงโจทย์/เฉลย
+                if (!isListening || isProcessing) return;
+                clearTimeout(recognitionResultTimer);
+
+                const firstNewResult = Number.isInteger(event.resultIndex) ? event.resultIndex : 0;
+                for (let i = firstNewResult; i < event.results.length; i++) {
+                    const text = event.results[i][0].transcript.trim();
+                    if (!text) continue;
+                    if (event.results[i].isFinal) {
+                        pendingTranscript = `${pendingTranscript} ${text}`.trim();
+                        latestInterimTranscript = '';
+                    } else {
+                        latestInterimTranscript = text;
+                    }
+                }
+
+                const preview = `${pendingTranscript} ${latestInterimTranscript}`.trim();
+                if (preview) document.getElementById('stt-transcript').innerText = `ได้ยิน: "${preview}"`;
+
+                clearTimeout(answerDebounceTimer);
+                answerDebounceTimer = setTimeout(() => {
+                    if (!isListening || isProcessing) return;
+                    const transcript = `${pendingTranscript} ${latestInterimTranscript}`.trim();
+                    pendingTranscript = '';
+                    latestInterimTranscript = '';
+                    if (transcript) {
+                        const matched = processIntent(transcript);
+                        if (!matched && isListening && !isProcessing) {
+                            speakRetryPrompt(transcript);
+                        }
+                    }
+                }, 3000); // รองรับการเว้นจังหวะระหว่างคำอธิบายยาว
+            };
+
+            recognition.onerror = (event) => {
+                const wasInitialRequest = waitingForInitialRecognition;
+                if (recognitionPausedForSpeech && event.error === 'aborted') return;
+                clearTimeout(recognitionResultTimer);
+                document.getElementById('stt-transcript').innerText = `SpeechRecognition error: ${event.error}`;
+                const fatalErrors = ['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'];
+                if (fatalErrors.includes(event.error)) {
+                    recognitionSessionActive = false;
+                    recognitionUnavailable = true;
+                    isListening = false;
+                    recognitionStarting = false;
+                    clearTimeout(recognitionStartTimer);
+                    const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+                        ? "เบราว์เซอร์ไม่อนุญาตให้ใช้ไมโครโฟน — ตรวจสิทธิ์ของเว็บไซต์ หรือใช้ปุ่มคำตอบ"
+                        : "ระบบรู้จำเสียงใช้งานไม่ได้ — ใช้ปุ่มคำตอบบนหน้าจอได้";
+                    updateStatus(message, "standby");
+                } else if (event.error === 'network') {
+                    updateStatus("การรู้จำเสียงต้องใช้อินเทอร์เน็ต — ตรวจการเชื่อมต่อแล้วลองพูดอีกครั้ง", "standby");
+                } else if (event.error === 'no-speech') {
+                    updateStatus("ยังไม่ได้ยินคำตอบ ลองพูดชื่อคำตอบหรือสี", isListening ? "listening" : "standby");
+                }
+                if (wasInitialRequest) {
+                    waitingForInitialRecognition = false;
+                    recognitionSessionActive = false;
+                    pauseRecognitionForSpeech(() => speakText(quizData[currentIndex].ttsSpeakText, true));
+                }
+            };
+
+            recognition.onend = () => {
+                clearTimeout(recognitionStartTimer);
+                recognitionStarting = false;
+                recognitionRunning = false;
+                if (waitingForInitialRecognition) {
+                    waitingForInitialRecognition = false;
+                    recognitionSessionActive = false;
+                    recognitionPausedForSpeech = true;
+                    speakText(quizData[currentIndex].ttsSpeakText, true);
+                    return;
+                }
+                if (recognitionPausedForSpeech) {
+                    runAfterRecognitionStops();
+                    return;
+                }
+                if (!recognitionSessionActive) return;
+                // Browser อาจปิด recognition เองระหว่างช่วงที่เด็กกำลังตอบ
+                scheduleRecognitionRetry();
+            };
+
+            return true;
+        }
+
+        function scheduleRecognitionRetry() {
+            clearTimeout(recognitionRestartTimer);
+            if (!recognitionSessionActive || recognitionPausedForSpeech || recognitionUnavailable) return;
+            if (recognitionRetryCount >= 5) {
+                updateStatus("เริ่มระบบฟังเสียงไม่ได้หลังลองซ้ำ — ลองแตะคำตอบบนหน้าจอ", "standby");
+                return;
+            }
+            recognitionRetryCount++;
+            recognitionRestartTimer = setTimeout(() => {
+                if (recognitionSessionActive && !recognitionPausedForSpeech && !recognitionUnavailable && !recognitionRunning && !recognitionStarting) {
+                    launchRecognitionAttempt();
+                }
+            }, 350);
+        }
+
+        function launchRecognitionAttempt() {
+            if (!recognition || recognitionUnavailable || recognitionPausedForSpeech || recognitionRunning || recognitionStarting || !recognitionSessionActive) return false;
+
+            // ใช้โครงสร้างเดิม: ให้ SpeechRecognition เปิดไมค์ของเบราว์เซอร์โดยตรง
+            recognitionStarting = true;
+            try {
+                recognition.start();
+                clearTimeout(recognitionStartTimer);
+                recognitionStartTimer = setTimeout(() => {
+                    if (!recognitionStarting || recognitionRunning) return;
+                    if (recognitionPausedForSpeech) {
+                        try {
+                            if (typeof recognition.abort === 'function') recognition.abort();
+                            else recognition.stop();
+                        } catch (error) {}
+                        return;
+                    }
+                    recognitionStarting = false;
+                    if (waitingForInitialRecognition) {
+                        updateStatus("ยังรอเบราว์เซอร์ตอบเรื่องไมโครโฟน — อนุญาตหน้าต่างไมค์เพื่อเริ่มข้อสอบ", "standby");
+                        return;
+                    }
+                    if (recognitionSessionActive && isListening && !isProcessing) scheduleRecognitionRetry();
+                }, 3000);
+                return true;
+            } catch (error) {
+                recognitionStarting = false;
+                clearTimeout(recognitionStartTimer);
+                if (error.name === 'InvalidStateError') {
+                    scheduleRecognitionRetry();
+                    return false;
+                }
+                recognitionSessionActive = false;
+                recognitionUnavailable = true;
+                isListening = false;
+                document.getElementById('stt-transcript').innerText = `recognition.start() error: ${error.name}`;
+                updateStatus(`เปิดรับเสียงไม่ได้ (${error.name}) — ตรวจสิทธิ์ไมค์ หรือใช้ปุ่มคำตอบ`, "standby");
+                return false;
+            }
+        }
+
+        function startRecognitionSession() {
+            if (!recognition || recognitionUnavailable) {
+                updateStatus("เบราว์เซอร์นี้ไม่รองรับการรู้จำเสียง — ใช้ปุ่มคำตอบบนหน้าจอได้", "standby");
+                return false;
+            }
+            recognitionSessionActive = true;
+            recognitionPausedForSpeech = false;
+            if (recognitionRunning || recognitionStarting) return true;
+            return launchRecognitionAttempt();
+        }
+
+        function startApp() {
+            if (appStarted) return;
+            appStarted = true;
+            initVoices();
+            setupSpeechRecognition();
+            document.getElementById('start-overlay').style.display = 'none';
+            treeGrowthLevel = 0;
+            currentIndex = 0;
+
+            if (recognition) {
+                // ขอสิทธิ์จากการแตะเริ่ม แล้วรอให้เบราว์เซอร์เริ่มจับเสียงก่อนหยุดและอ่านโจทย์
+                renderQuestion(false, true);
+                updateStatus("กำลังรอการอนุญาตไมโครโฟน — จะหยุดรับเสียงก่อนอ่านโจทย์", "standby");
+                waitingForInitialRecognition = true;
+                if (!startRecognitionSession() && recognitionUnavailable) {
+                    waitingForInitialRecognition = false;
+                    speakText(quizData[currentIndex].ttsSpeakText, true);
+                }
+            } else {
+                renderQuestion();
+            }
+        }
+
+        function updateTreeVisuals() {
+            // คำนวณเปอร์เซ็นต์ (0 ถึง 100%)
+            let percent = (treeGrowthLevel / quizData.length) * 100;
+            // CSS clip-path inset(top right bottom left). ถ้า top=100% คือมองไม่เห็น, 0% คือเห็นเต็มๆ
+            let clipValue = `inset(${100 - percent}% 0 0 0)`;
+
+            const headerTree = document.getElementById('tree-fill-header');
+            headerTree.style.clipPath = clipValue;
+
+            // ทำให้ต้นไม้กระเพื่อมเล็กน้อยเมื่อได้คะแนน/โดนรดน้ำ
+            headerTree.classList.remove('tree-grow');
+            void headerTree.offsetWidth; // Trigger reflow
+            headerTree.classList.add('tree-grow');
+        }
+
+        function renderQuestion(shouldSpeak = true, preserveRecognition = false) {
+            isProcessing = false;
+            if (!preserveRecognition) stopMic();
+            clearTimeout(autoRepeatTimer);
+
+            const q = quizData[currentIndex];
+            document.getElementById('ui-q-text').innerText = q.uiText;
+
+            updateTreeVisuals(); // อัปเดตหน้าตาต้นไม้เสมอ
+
+            // โหลดข้อมูลตัวหนังสือและไอคอนใหม่
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`opt-${i}-text`).innerText = q.options[i].text;
+                document.getElementById(`opt-${i}-icon`).className = `fa-solid ${q.options[i].icon} text-5xl sm:text-7xl mb-3 drop-shadow-md transition-transform group-hover:scale-110`;
+            }
+
+            document.getElementById('stt-transcript').innerText = "-";
+            updateStatus("กำลังเตรียมโจทย์ตัวอย่าง...", "standby");
+
+            // เริ่มอ่านโจทย์
+            if (shouldSpeak) setTimeout(() => speakText(q.ttsSpeakText, true), 600);
+        }
+
+        function speakText(text, isQuestionText) {
+            if (!synth || isProcessing) return;
+            pauseRecognitionForSpeech(() => {
+                if (isProcessing) return;
+                synth.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (bestThaiFemaleVoice) utterance.voice = bestThaiFemaleVoice;
+                utterance.lang = 'th-TH';
+                utterance.rate = 0.65;
+                utterance.pitch = 1.2;
+                utterance.onstart = () => {
+                    updateStatus("กำลังอ่านออกเสียงด้วยเสียงของเบราว์เซอร์", "speaking");
+                };
+                utterance.onend = () => {
+                    if (!isProcessing && isQuestionText) {
+                        startMic();
+                        autoRepeatTimer = setTimeout(() => {
+                            stopMic();
+                            speakText("ครูจะทวนให้อีกครั้งนะคะ . " + text, true);
+                        }, 12000);
+                    }
+                };
+                synth.speak(utterance);
+            });
+        }
+
+        function startMic() {
+            if (isProcessing) return;
+            if (!recognition) {
+                updateStatus("เบราว์เซอร์นี้ไม่รองรับการรู้จำเสียงพูด — ใช้ปุ่มคำตอบบนหน้าจอ", "standby");
+                return;
+            }
+            if (recognitionUnavailable) {
+                updateStatus("ระบบรู้จำเสียงใช้ไม่ได้ในขณะนี้ — ใช้ปุ่มคำตอบบนหน้าจอได้", "standby");
+                return;
+            }
+            recognitionPausedForSpeech = false;
+            isListening = true;
+            pendingTranscript = '';
+            latestInterimTranscript = '';
+            clearTimeout(answerDebounceTimer);
+            recognitionSessionActive = true;
+            if (!recognitionRunning && !recognitionStarting) {
+                launchRecognitionAttempt();
+            } else {
+                updateStatus("ระบบฟังเริ่มแล้ว — พูดตอบได้", "listening");
+                armNoTranscriptTimer();
+            }
+        }
+
+        function stopMic() {
+            pauseRecognitionForSpeech();
+        }
+
+        function stopRecognitionSession() {
+            pendingAfterRecognitionStop = null;
+            stopMic();
+            recognitionSessionActive = false;
+            waitingForInitialRecognition = false;
+            clearTimeout(recognitionRestartTimer);
+            clearTimeout(recognitionStartTimer);
+        }
+
+        function processIntent(transcript) {
+            const normalize = value => value.toLowerCase().replace(/[\s.,!?;:()[\]{}"“”‘’ฯๆ…\-]/g, '');
+            const text = normalize(transcript);
+            const q = quizData[currentIndex];
+            const answerAliases = {
+                'สุนัข': ['หมา', 'เจ้าหมา'],
+                'ปลา': ['ปลาครับ', 'ปลาค่ะ'],
+                'แอปเปิล': ['แอปเปิ้ล', 'แอปเปิ้ลผลไม้'],
+                'เก้าอี้': ['เก้าอี้ครับ', 'เก้าอี้ค่ะ'],
+                'รถยนต์': ['รถ', 'รถเก๋ง'],
+                'ให้หยุดรถ': ['หยุดรถ', 'ต้องหยุด', 'หยุด', 'หยุดก่อน'],
+                'จอดพัก': ['จอด', 'จอดรถ', 'จอดพักรถ']
+            };
+            const ordinals = ['หนึ่ง', 'สอง', 'สาม', 'สี่'];
+            const keyNames = { ก: 'กอไก่', ข: 'ขอไข่', ค: 'คอควาย', ง: 'งองู' };
+            const hits = [];
+
+            const addHits = (phrase, index, kind) => {
+                const term = normalize(phrase);
+                if (!term || term.length < 2) return;
+                let from = 0;
+                while (from <= text.length - term.length) {
+                    const pos = text.indexOf(term, from);
+                    if (pos < 0) break;
+                    const before = text.slice(Math.max(0, pos - 14), pos);
+                    const after = text.slice(pos + term.length, pos + term.length + 12);
+                    const negatedBefore = /(?:ไม่ใช่(?:คำตอบ)?|ไม่เลือก|ไม่ตอบ|ไม่เอา|ไม่ถูก)$/.test(before);
+                    const negatedAfter = /^(?:ไม่ใช่(?:คำตอบ)?|ไม่ถูก|ไม่ได้เลือก)/.test(after);
+                    if (!negatedBefore && !negatedAfter) hits.push({ index, pos, end: pos + term.length, kind, term });
+                    from = pos + Math.max(1, term.length);
+                }
+            };
+
+            for (let i = 0; i < q.options.length; i++) {
+                const option = q.options[i];
+                const variants = [option.text, ...(answerAliases[option.text] || [])];
+                for (const variant of variants) addHits(variant, i, 'answer');
+
+                // สีและชื่อช้อยส์พูดได้ทั้งแบบเต็มและแบบสั้น เช่น “แดง”, “ข้อ ข”, “ขอไข่”
+                addHits(option.colorText.replace(/^สี/, ''), i, 'color');
+                addHits(`ข้อ${option.key}`, i, 'key');
+                addHits(`ตัวเลือก${option.key}`, i, 'key');
+                addHits(keyNames[option.key], i, 'key');
+                addHits(`ข้อ${ordinals[i]}`, i, 'ordinal');
+                addHits(`ตัวเลือก${ordinals[i]}`, i, 'ordinal');
+                addHits(`ตัวเลือกที่${ordinals[i]}`, i, 'ordinal');
+            }
+
+            if (!hits.length) return false;
+
+            // ถ้าพูดว่า “คำตอบคือ… / ผมเลือก… / คิดว่าคือ…” ให้ใช้ช้อยส์หลังวลีนั้นก่อน
+            const answerCues = ['คำตอบคือ', 'คำตอบเป็น', 'ตอบว่า', 'ขอตอบ', 'ขอเลือก', 'เลือก', 'คิดว่าคำตอบคือ', 'น่าจะเป็น'];
+            const cuePositions = answerCues.map(cue => text.indexOf(normalize(cue))).filter(pos => pos >= 0);
+            if (cuePositions.length) {
+                const cuePos = Math.min(...cuePositions);
+                const afterCue = hits.filter(hit => hit.pos >= cuePos);
+                if (afterCue.length) {
+                    afterCue.sort((a, b) => a.pos - b.pos || b.term.length - a.term.length);
+                    const chosen = afterCue[0];
+                    handleAnswer(chosen.index);
+                    return true;
+                }
+            }
+
+            // คำตอบยาวอาจพูดถึงตัวเลือกที่ตัดทิ้งก่อน แล้วสรุปช้อยส์ท้ายประโยค
+            // เลือกการกล่าวถึงล่าสุดที่ไม่อยู่ในวลีปฏิเสธ แทนการเลือกตัวเลือกแรกที่เจอ
+            hits.sort((a, b) => b.pos - a.pos || b.term.length - a.term.length);
+            handleAnswer(hits[0].index);
+            return true;
+        }
+
+        function speakRetryPrompt(transcript) {
+            // อย่าปล่อยให้เด็กพูดแล้วระบบเงียบเมื่อรู้จำได้แต่ยังจับคู่ไม่ได้
+            stopMic();
+            document.getElementById('stt-transcript').innerText = `ได้ยินว่า: "${transcript}"`;
+            updateStatus("ได้ยินแล้ว แต่ยังไม่แน่ใจคำตอบ กำลังถามให้ตอบใหม่", "speaking");
+            synth.cancel();
+
+            const prompt = new SpeechSynthesisUtterance("ครูได้ยินแล้วค่ะ แต่ยังไม่แน่ใจคำตอบ ลองพูดชื่อคำตอบ สี หรือข้อ กอไก่ ขอไข่ คอควาย งองู อีกครั้งนะคะ");
+            if (bestThaiFemaleVoice) prompt.voice = bestThaiFemaleVoice;
+            prompt.lang = 'th-TH';
+            prompt.rate = 0.75;
+            prompt.pitch = 1.15;
+            prompt.onend = () => {
+                if (!isProcessing) startMic();
+            };
+            pauseRecognitionForSpeech(() => synth.speak(prompt));
+        }
+
+        function handleManualClick(index) {
+            if (!isProcessing) {
+                document.getElementById('stt-transcript').innerText = "(รับคำสั่งผ่านระบบสัมผัส)";
+                handleAnswer(index);
+            }
+        }
+
+        function handleAnswer(selectedIndex) {
+            isProcessing = true;
+            stopMic();
+            clearTimeout(autoRepeatTimer);
+            synth.cancel();
+
+            const q = quizData[currentIndex];
+            const isCorrect = (selectedIndex === q.correctIndex);
+
+            let feedbackSpeech = "";
+            if (isCorrect) {
+                treeGrowthLevel++;
+                updateTreeVisuals();
+                feedbackSpeech = "ถูกต้องค่ะ";
+                showModal(true);
+            } else {
+                // ตอบผิดบอกสั้นๆ แล้วไปต่อเลย ไม่ให้รู้สึกแย่
+                feedbackSpeech = "ยังไม่ใช่ค่ะ";
+                showModal(false);
+            }
+
+            // เสียงผู้หญิงให้กำลังใจ
+            const u = new SpeechSynthesisUtterance(feedbackSpeech);
+            if (bestThaiFemaleVoice) u.voice = bestThaiFemaleVoice;
+            u.lang = 'th-TH';
+            u.rate = 0.65;
+            u.pitch = 1.2;
+
+            u.onend = () => {
+                // รีบพาเด็กไปข้อต่อไปอย่างรวดเร็ว (Fast-forward)
+                setTimeout(() => {
+                    hideModal();
+                    if (currentIndex === quizData.length - 1) {
+                        showEndScreen();
+                    } else {
+                        currentIndex++;
+                        renderQuestion();
+                    }
+                }, 400); // ดีเลย์น้อยๆ ให้ลื่นไหล
+            };
+
+            pauseRecognitionForSpeech(() => synth.speak(u));
+        }
+
+        function updateStatus(msg, state) {
+            document.getElementById('ai-status-text').innerText = msg;
+            const container = document.getElementById('ai-status-container');
+            const icon = document.getElementById('ai-icon');
+            const sub = document.getElementById('ai-sub-status');
+
+            if (state === "speaking") {
+                container.className = "flex items-center gap-3 bg-sky-950/80 px-5 py-3 rounded-2xl border border-sky-500 w-full transition-all shadow-[0_0_15px_rgba(56,189,248,0.2)]";
+                icon.className = "fa-solid fa-volume-high text-sky-400 text-2xl animate-pulse";
+                sub.innerText = "เสียงสังเคราะห์จากเบราว์เซอร์ (เดโม)";
+            } else if (state === "listening") {
+                container.className = "flex items-center gap-3 bg-emerald-950 px-5 py-3 rounded-2xl border border-ais-green w-full transition-all shadow-[0_0_20px_rgba(130,195,65,0.3)]";
+                icon.className = "fa-solid fa-microphone text-ais-green text-2xl fa-beat";
+                sub.innerText = "การรู้จำเสียงของเบราว์เซอร์ (เดโม)";
+            } else {
+                container.className = "flex items-center gap-3 bg-slate-900 px-5 py-3 rounded-2xl border border-slate-700 w-full transition-all";
+                icon.className = "fa-solid fa-robot text-slate-400 text-2xl";
+                sub.innerText = "ต้นแบบสาธิต — ไม่ได้เชื่อมต่อระบบ AIS จริง";
+            }
+        }
+
+        function showModal(isCorrect) {
+            const modal = document.getElementById('modal-feedback');
+            const box = document.getElementById('modal-box');
+            const icon = document.getElementById('modal-icon');
+            const container = document.getElementById('modal-icon-container');
+            const splash = document.getElementById('water-splash');
+
+            if (isCorrect) {
+                // สีฟ้าแสดงการรดน้ำต้นไม้สำเร็จ
+                box.className = "bg-slate-800 border-4 border-sky-400 rounded-3xl p-8 max-w-sm w-[90%] text-center transform scale-90 transition-all duration-300 shadow-[0_0_50px_rgba(56,189,248,0.4)]";
+                container.className = "w-24 h-24 mx-auto bg-sky-900/40 text-sky-400 rounded-full flex items-center justify-center text-5xl mb-4 border-2 border-sky-400 relative overflow-hidden";
+                icon.className = "fa-solid fa-droplet";
+                splash.classList.remove('hidden');
+                document.getElementById('modal-title').innerText = "ถูกต้อง!";
+                document.getElementById('modal-title').className = "text-3xl font-black text-sky-400 mb-2";
+            } else {
+                // สีเทาเฉยๆ เพื่อไม่ให้ดูเป็นการทำโทษ
+                box.className = "bg-slate-800 border-4 border-slate-500 rounded-3xl p-8 max-w-sm w-[90%] text-center transform scale-90 transition-all duration-300 shadow-[0_0_30px_rgba(100,116,139,0.3)]";
+                container.className = "w-24 h-24 mx-auto bg-slate-700 text-slate-400 rounded-full flex items-center justify-center text-5xl mb-4 border-2 border-slate-500";
+                icon.className = "fa-solid fa-rotate-right";
+                splash.classList.add('hidden');
+                document.getElementById('modal-title').innerText = "ยังไม่ใช่ค่ะ";
+                document.getElementById('modal-title').className = "text-3xl font-black text-slate-300 mb-2";
+            }
+
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            box.classList.remove('scale-90');
+        }
+
+        function hideModal() {
+            const modal = document.getElementById('modal-feedback');
+            const box = document.getElementById('modal-box');
+            modal.classList.add('opacity-0');
+            box.classList.add('scale-90');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('water-splash').classList.add('hidden');
+            }, 300);
+        }
+
+        function showEndScreen() {
+            stopRecognitionSession();
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('end-container').classList.remove('hidden');
+            document.getElementById('end-container').classList.add('flex');
+
+            // คำนวณและแสดงผลต้นไม้สุดท้าย
+            let percent = (treeGrowthLevel / quizData.length) * 100;
+            document.getElementById('tree-fill-end').style.clipPath = `inset(${100 - percent}% 0 0 0)`;
+
+            let finalMsg = "";
+            if (percent === 100) {
+                document.getElementById('score-feedback').innerText = "เก่งมากเลยค่ะ หนูรดน้ำจนต้นไม้เติบโตสวยงาม!";
+                finalMsg = "เก่งมากเลยค่ะ. หนูรดน้ำจนต้นไม้เติบโตสวยงาม.";
+            } else if (percent > 0) {
+                document.getElementById('score-feedback').innerText = "เก่งมากเลยค่ะ ต้นไม้ของหนูเติบโตขึ้นเยอะเลย!";
+                finalMsg = "เก่งมากเลยค่ะ. ต้นไม้ของหนูเติบโตขึ้นเยอะเลย.";
+            } else {
+                document.getElementById('score-feedback').innerText = "เก่งมากที่พยายามจนจบค่ะ ครั้งหน้าเรามาช่วยรดน้ำกันใหม่นะ!";
+                finalMsg = "เก่งมากที่พยายามจนจบค่ะ. ครั้งหน้า, เรามาช่วยรดน้ำกันใหม่นะ.";
+            }
+
+            const u = new SpeechSynthesisUtterance(finalMsg);
+            if (bestThaiFemaleVoice) u.voice = bestThaiFemaleVoice;
+            u.lang = 'th-TH';
+            u.rate = 0.65;
+            u.pitch = 1.2;
+            pauseRecognitionForSpeech(() => synth.speak(u));
+        }
+
+        function resetQuiz() {
+            document.getElementById('end-container').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+            treeGrowthLevel = 0;
+            currentIndex = 0;
+            renderQuestion();
+        }
+
+        function switchTab(tab) {
+            if (tab === 'demo') {
+                document.getElementById('tab-demo').classList.remove('hidden');
+                document.getElementById('tab-arch').classList.add('hidden');
+                document.getElementById('tab-btn-demo').className = "px-4 py-2 text-sm font-bold rounded-lg bg-ais-green text-slate-900 transition-colors";
+                document.getElementById('tab-btn-arch').className = "px-4 py-2 text-sm font-bold rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors";
+                if (appStarted && !document.getElementById('end-container').classList.contains('flex')) {
+                    renderQuestion();
+                }
+            } else {
+                document.getElementById('tab-demo').classList.add('hidden');
+                document.getElementById('tab-arch').classList.remove('hidden');
+                document.getElementById('tab-arch').classList.add('flex');
+                document.getElementById('tab-btn-arch').className = "px-4 py-2 text-sm font-bold rounded-lg bg-ais-green text-slate-900 transition-colors";
+                document.getElementById('tab-btn-demo').className = "px-4 py-2 text-sm font-bold rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors";
+
+                stopRecognitionSession();
+                clearTimeout(autoRepeatTimer);
+                synth.cancel();
+            }
+        }
+
+        window.addEventListener('pagehide', () => {
+            stopRecognitionSession();
+        });
+    </script>
+</body>
+</html>
